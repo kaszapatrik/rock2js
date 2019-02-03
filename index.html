@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Rock2JS native</title>
+        <link href="default.css" type="text/css" rel="stylesheet" />
+    </head>
+    <body>
+        <div id="container">
+            <textarea id="input-rock" placeholder="Rockstar" autofocus></textarea>
+            <textarea id="output-js" placeholder="JS"></textarea>
+            
+            <div id="source">
+                Source from GitHub:
+                <input type="text" id="source-input" />
+                <input type="button" id="get" value="Get" />
+            </div>
+            
+            <div id="indent">
+                Indent:
+                <input type="number" id="indent-size" value="4" min="0" max="16" />
+                <input type="button" id="run" value="Run" />
+            </div>
+            
+            <div id="modal">
+                <div id="modal-close">×</div>
+                <textarea id="content" readonly></textarea>
+            </div>
+        </div>
+        
+        <script src="rock2js-native.js"></script>
+        
+        <script>
+            (() => {
+                const get = (el) => document.getElementById(el);
+                
+                const myConsole = {
+                    log: content => {
+                        console.log(content);
+                        get('content').value += `${content}\n`;
+                    }
+                };
+                
+                function transpile(ev) {
+                    console.clear();
+                    
+                    const transpiler = new rock2js(ev.target.value);
+                    console.log(transpiler.result);
+                    
+                    get('output-js').value = transpiler.result;
+                }
+                
+                get('input-rock').addEventListener('change', ev => { transpile(ev); });
+                get('input-rock').addEventListener('blur', ev => { transpile(ev); });
+                
+                get('get').addEventListener('click', () => {
+                    let url = get('source-input').value;
+                    
+                    const checkGitHub = !!(url.match('https://github.com'));
+                    
+                    if (checkGitHub) {
+                        url = url
+                            .replace('https://github.com', 'https://raw.githubusercontent.com')
+                            .replace('/blob/master/', '/master/');
+                    }
+                    
+                    const request = new XMLHttpRequest();
+                    
+                    request.addEventListener('load', function () {
+                        get('input-rock').value = this.responseText;
+                        get('input-rock').dispatchEvent(new Event('blur'));
+                    });
+                    
+                    request.open('GET', `https://cors.io/?${url}`);
+                    request.send();
+                });
+                
+                get('run').addEventListener('click', () => {
+                    get('modal').style.display = 'block';
+                    
+                    setTimeout(() => {
+                        try {
+                            eval(get('output-js').value.replace(/console(?=\.log\()/gm, `myConsole`));
+                        }
+                        
+                        catch (error) {
+                            get('content').value = `ERROR:\n\n${error.message}`;
+                        }
+                    }, 10);
+                });
+                
+                function closeModal(ev) {
+                    if (ev.target.id == 'modal' || ev.target.id == 'modal-close') {
+                        get('content').value = '';
+                        get('modal').style.display = 'none';
+                    }
+                }
+                
+                get('modal').addEventListener('click', closeModal);
+                get('modal-close').addEventListener('click', closeModal);
+            })();
+        </script>
+    </body>
+</html>
+<!-- Kasza Patrik, 2019. -->
